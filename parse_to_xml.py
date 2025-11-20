@@ -2,9 +2,11 @@ import sys
 import os
 from bs4 import BeautifulSoup
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 HTML_FILE = "opinion.html"
 XML_FILE = "articles.xml"
+MAX_ITEMS = 500
 
 # Load HTML
 if not os.path.exists(HTML_FILE):
@@ -17,7 +19,6 @@ with open(HTML_FILE, "r", encoding="utf-8") as f:
 # Parse article entries
 articles = []
 
-# Pattern: <a href="..."> around each article card/lead/list-block
 for a in soup.select("a[href*='/opinion/article/']"):
     url = a.get("href")
 
@@ -60,43 +61,40 @@ for a in soup.select("a[href*='/opinion/article/']"):
 if os.path.exists(XML_FILE):
     tree = ET.parse(XML_FILE)
     root = tree.getroot()
+    channel = root.find("channel")
 else:
-    root = ET.Element("articles")
+    root = ET.Element("rss", version="2.0")
+    channel = ET.SubElement(root, "channel")
+    ET.SubElement(channel, "title").text = "Samakal Opinion"
+    ET.SubElement(channel, "link").text = "https://samakal.com/opinion"
+    ET.SubElement(channel, "description").text = "Latest opinion articles from Samakal"
 
 # Collect existing URLs
 existing = set()
-for item in root.findall("item"):
-    u = item.find("url")
-    if u is not None:
-        existing.add(u.text.strip())
+for item in channel.findall("item"):
+    link_tag = item.find("link")
+    if link_tag is not None:
+        existing.add(link_tag.text.strip())
 
 # Append new unique articles
 for art in articles:
     if art["url"] in existing:
         continue
 
-    item = ET.SubElement(root, "item")
+    item = ET.SubElement(channel, "item")
+    ET.SubElement(item, "title").text = art["title"]
+    ET.SubElement(item, "link").text = art["url"]
+    ET.SubElement(item, "description").text = art["desc"]
+    ET.SubElement(item, "pubDate").text = art["pub"] if art["pub"] else datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S +0000")
+    if art["img"]:
+        ET.SubElement(item, "enclosure", url=art["img"], type="image/jpeg")
 
-    e_url = ET.SubElement(item, "url")
-    e_url.text = art["url"]
-
-    e_title = ET.SubElement(item, "title")
-    e_title.text = art["title"]
-
-    e_desc = ET.SubElement(item, "description")
-    e_desc.text = art["desc"]
-
-    e_pub = ET.SubElement(item, "publishTime")
-    e_pub.text = art["pub"]
-
-    e_img = ET.SubElement(item, "image")
-    e_img.text = art["img"]
-
-# Trim to last 500
-items = root.findall("item")
-if len(items) > 500:
-    for extra in items[:-500]:
-        root.remove(extra)
+# Trim to last MAX_ITEMS
+all_items = channel.findall("item")
+if len(all_items) > MAX_ITEMS:
+    # Remove oldest first
+    for old_item in all_items[:-MAX_ITEMS]:
+        channel.remove(old_item)
 
 # Save XML
 tree = ET.ElementTree(root)
