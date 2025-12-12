@@ -2,7 +2,7 @@ import requests
 import sys
 
 FLARESOLVERR_URL = "http://localhost:8191/v1"
-TARGET_URL = "https://www.newagebd.net/top-news"
+TARGET_URL = "https://www.tbsnews.net/latest"
 
 payload = {
     "cmd": "request.get",
