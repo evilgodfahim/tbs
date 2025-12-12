@@ -1,33 +1,31 @@
-name: Parse Opinion to XML
-
+# .github/workflows/update-main-feed.yml
+name: Update Main Feed (Every 5 mins)
 on:
   schedule:
-    - cron: "15 * * * *"   # 00:00 UTC = 6:00 AM BD time
+    - cron: "*/5 * * * *"   # Every 5 minutes
   workflow_dispatch:
 
 jobs:
-  parse:
+  update-main:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-
+      
       - name: Install dependencies
         run: pip install -r requirements.txt
-
-      - name: Parse HTML to XML
-        run: python parse_to_xml.py
-
-      - name: Commit changes
+      
+      - name: Update Main XML
+        run: python parse_to_xml.py --main-only
+      
+      - name: Commit and push changes
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add articles.xml
-          git commit -m "Daily XML update" || echo "No changes"
-          git push
+          git add -A
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update main feed - $(date +'%Y-%m-%d %H:%M:%S')" && git push)
