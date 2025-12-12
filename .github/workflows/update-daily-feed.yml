@@ -1,0 +1,31 @@
+# .github/workflows/update-daily-feed.yml
+name: Update Daily Feed (7 AM BD)
+on:
+  schedule:
+    - cron: "0 1 * * *"   # 01:00 UTC = 7:00 AM BD time (UTC+6)
+  workflow_dispatch:
+
+jobs:
+  update-daily:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Update Daily Feed
+        run: python parse_to_xml.py --daily-only
+      
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add -A
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Daily feed update - $(date +'%Y-%m-%d %H:%M:%S')" && git push)
