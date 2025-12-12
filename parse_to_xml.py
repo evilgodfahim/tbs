@@ -6,6 +6,7 @@ from xml.dom import minidom
 from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
 import json
+import re
 
 HTML_FILE = "news.html"
 XML_FILE = "articles.xml"
@@ -21,10 +22,34 @@ LINK_RETENTION_DAYS = 7
 # -----------------------------
 # UTILITIES
 # -----------------------------
+def parse_relative_time(time_text):
+    """Parse relative time like '32m', '1h', '2d' into datetime"""
+    now = datetime.now(timezone.utc)
+    time_text = time_text.strip().lower()
+    
+    # Match patterns like "32m", "1h", "2d"
+    match = re.match(r'(\d+)\s*(m|h|d)', time_text)
+    if match:
+        value = int(match.group(1))
+        unit = match.group(2)
+        
+        if unit == 'm':  # minutes
+            return now - timedelta(minutes=value)
+        elif unit == 'h':  # hours
+            return now - timedelta(hours=value)
+        elif unit == 'd':  # days
+            return now - timedelta(days=value)
+    
+    return now
+
 def parse_date_from_text(date_text):
     """Parse date from various formats"""
     if not date_text:
         return datetime.now(timezone.utc)
+    
+    # Try relative time first (like "32m", "1h")
+    if re.match(r'\d+\s*[mhd]', date_text.strip().lower()):
+        return parse_relative_time(date_text)
     
     try:
         # Try email format first
@@ -94,8 +119,8 @@ def write_rss(items, file_path, title="Feed"):
     rss = ET.Element("rss", version="2.0")
     channel = ET.SubElement(rss, "channel")
     ET.SubElement(channel, "title").text = title
-    ET.SubElement(channel, "link").text = "https://www.newagebd.net"
-    ET.SubElement(channel, "description").text = f"{title} - New Age BD News"
+    ET.SubElement(channel, "link").text = "https://www.tbsnews.net"
+    ET.SubElement(channel, "description").text = f"{title} - The Business Standard News"
 
     for item in items:
         it = ET.SubElement(channel, "item")
@@ -144,7 +169,7 @@ def save_last_seen(last_dt):
 # SCRAPE ARTICLES FROM HTML
 # -----------------------------
 def scrape_articles():
-    """Extract articles from New Age BD HTML"""
+    """Extract articles from TBS (The Business Standard) HTML"""
     # Load HTML
     if not os.path.exists(HTML_FILE):
         print(f"HTML file '{HTML_FILE}' not found")
@@ -154,10 +179,12 @@ def scrape_articles():
         soup = BeautifulSoup(f.read(), "html.parser")
 
     articles = []
+    base_url = "https://www.tbsnews.net"
 
-    # Extract articles from New Age BD format
-    for article_card in soup.select("article.card.card-full.hover-a"):
-        link_tag = article_card.select_one("a[href]")
+    # Extract articles from TBS format - looking for card containers
+    for card in soup.select("div.card"):
+        # Find the main article link
+        link_tag = card.select_one("h3.card-title a")
         if not link_tag:
             continue
         
@@ -165,26 +192,37 @@ def scrape_articles():
         if not url:
             continue
         
+        # Make URL absolute if needed
+        if url.startswith("/"):
+            url = base_url + url
+        
+        # EXCLUDE video links
+        if "/videos/" in url:
+            print(f"Skipping video link: {url}")
+            continue
+        
         # Get title
-        title_tag = article_card.select_one("h2.card-title a")
-        title = title_tag.get_text(strip=True) if title_tag else None
+        title = link_tag.get_text(strip=True)
         if not title:
             continue
         
-        # Get description
-        desc_tag = article_card.select_one("p.card-text")
-        desc = desc_tag.get_text(strip=True) if desc_tag else ""
+        # Get description - not present in this format, use empty string
+        desc = ""
         
-        # Get publication date
-        time_tag = article_card.select_one("time")
-        pub_text = time_tag.get_text(strip=True) if time_tag else ""
+        # Get publication date from the date div
+        date_tag = card.select_one("div.date")
+        pub_text = date_tag.get_text(strip=True) if date_tag else ""
         pub_date = parse_date_from_text(pub_text)
         
         # Get image
-        img_tag = article_card.select_one("img")
         img = ""
+        img_tag = card.select_one("img")
         if img_tag:
+            # Try data-src first (lazy loaded), then src
             img = img_tag.get("data-src", "") or img_tag.get("src", "")
+            # Make image URL absolute if needed
+            if img and img.startswith("/"):
+                img = base_url + img
         
         articles.append({
             "url": url,
@@ -194,7 +232,7 @@ def scrape_articles():
             "img": img
         })
 
-    print(f"Found {len(articles)} articles in HTML")
+    print(f"Found {len(articles)} articles in HTML (excluding videos)")
     return articles
 
 # -----------------------------
@@ -223,9 +261,9 @@ def update_main_xml():
     channel = root.find("channel")
     if channel is None:
         channel = ET.SubElement(root, "channel")
-        ET.SubElement(channel, "title").text = "New Age BD News"
-        ET.SubElement(channel, "link").text = "https://www.newagebd.net"
-        ET.SubElement(channel, "description").text = "Latest news articles from New Age Bangladesh"
+        ET.SubElement(channel, "title").text = "The Business Standard News"
+        ET.SubElement(channel, "link").text = "https://www.tbsnews.net"
+        ET.SubElement(channel, "description").text = "Latest news articles from The Business Standard Bangladesh"
 
     # Deduplicate existing URLs
     existing = set()
@@ -271,7 +309,7 @@ def update_main_xml():
     all_items = channel.findall("item")
     if len(all_items) > MAX_ITEMS:
         removed = len(all_items) - MAX_ITEMS
-        for old_item in all_items[:-MAX_ITEMS]:
+        for old_item in all_items[MAX_ITEMS:]:
             channel.remove(old_item)
         print(f"Removed {removed} old articles (keeping last {MAX_ITEMS})")
 
@@ -323,14 +361,14 @@ def update_daily():
     if not new_items:
         placeholder = [{
             "title": "No new articles since last update",
-            "link": "https://www.newagebd.net",
+            "link": "https://www.tbsnews.net",
             "description": "Daily feed will populate when new articles are published.",
             "pubDate": datetime.now(timezone.utc),
             "img": ""
         }]
 
         # Create empty daily_feed.xml
-        write_rss(placeholder, f"{DAILY_FILE_PREFIX}.xml", title="Daily Feed - New Age BD")
+        write_rss(placeholder, f"{DAILY_FILE_PREFIX}.xml", title="Daily Feed - The Business Standard")
         
         # Update last_seen to current time
         save_last_seen(datetime.now(timezone.utc))
@@ -350,10 +388,10 @@ def update_daily():
     for idx, batch in enumerate(batches):
         if idx == 0:
             filename = f"{DAILY_FILE_PREFIX}.xml"
-            title = "Daily Feed - New Age BD"
+            title = "Daily Feed - The Business Standard"
         else:
             filename = f"{DAILY_FILE_PREFIX}_{idx + 1}.xml"
-            title = f"Daily Feed {idx + 1} - New Age BD"
+            title = f"Daily Feed {idx + 1} - The Business Standard"
         
         write_rss(batch, filename, title=title)
         created_files.append(filename)
@@ -377,7 +415,7 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     
     print("=" * 60)
-    print("New Age BD Article Scraper")
+    print("The Business Standard Article Scraper")
     print("=" * 60)
     
     files_created = []
