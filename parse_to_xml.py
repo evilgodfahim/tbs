@@ -13,7 +13,7 @@ XML_FILE = "articles.xml"
 DAILY_FILE_PREFIX = "daily_feed"
 LAST_SEEN_FILE = "last_seen.json"
 
-MAX_ITEMS = 500
+MAX_ITEMS = 1000
 MAX_ITEMS_PER_DAILY = 100
 BD_OFFSET = 6
 
