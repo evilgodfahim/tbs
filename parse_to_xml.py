@@ -7,13 +7,13 @@ from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
 import json
 
-HTML_FILE = "opinion.html"
+HTML_FILE = "news.html"
 XML_FILE = "articles.xml"
-DAILY_FILE = "daily_feed.xml"
-DAILY_FILE_2 = "daily_feed_2.xml"
+DAILY_FILE_PREFIX = "daily_feed"
 LAST_SEEN_FILE = "last_seen.json"
 
-MAX_ITEMS = 1000
+MAX_ITEMS = 500
+MAX_ITEMS_PER_DAILY = 100  # Max items per daily feed file
 BD_OFFSET = 6
 LOOKBACK_HOURS = 48
 LINK_RETENTION_DAYS = 7
@@ -120,32 +120,24 @@ def write_rss(items, file_path, title="Feed"):
 # LAST SEEN TRACKING
 # -----------------------------
 def load_last_seen():
-    """Load last seen timestamp and processed links"""
+    """Load last seen timestamp (no processed links tracking)"""
     if os.path.exists(LAST_SEEN_FILE):
         try:
             with open(LAST_SEEN_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 last_seen_str = data.get("last_seen")
-                processed = set(data.get("processed_links", []))
                 last_seen_dt = datetime.fromisoformat(last_seen_str) if last_seen_str else None
-                return {"last_seen": last_seen_dt, "processed_links": processed}
+                return {"last_seen": last_seen_dt}
         except Exception:
-            return {"last_seen": None, "processed_links": set()}
-    return {"last_seen": None, "processed_links": set()}
+            return {"last_seen": None}
+    return {"last_seen": None}
 
-def save_last_seen(last_dt, processed_links, master_items):
-    """Save last seen timestamp and clean up old processed links"""
-    cutoff = last_dt - timedelta(days=LINK_RETENTION_DAYS)
-    master_links_recent = {
-        item["link"] for item in master_items
-        if item["pubDate"] > cutoff
-    }
-    links_to_keep = [link for link in processed_links if link in master_links_recent]
-
+def save_last_seen(last_dt):
+    """Save only the last seen timestamp"""
     with open(LAST_SEEN_FILE, "w", encoding="utf-8") as f:
         json.dump({
             "last_seen": last_dt.isoformat(),
-            "processed_links": links_to_keep
+            "last_run": datetime.now(timezone.utc).isoformat()
         }, f, indent=2)
 
 # -----------------------------
@@ -288,75 +280,95 @@ def update_main_xml():
     ET.indent(tree, space="  ", level=0)
     tree.write(XML_FILE, encoding="utf-8", xml_declaration=True)
 
-    print(f"✓ {XML_FILE} updated")
+    print(f"✓ {XML_FILE} saved successfully")
+    print(f"✓ File path: {os.path.abspath(XML_FILE)}")
     print(f"Total articles in feed: {len(channel.findall('item'))}")
 
 # -----------------------------
 # UPDATE DAILY FEED
 # -----------------------------
 def update_daily():
-    """Update daily feed with new articles since last run"""
-    print("\n[Updating daily_feed.xml with robust tracking]")
+    """Update daily feed with articles published since last run"""
+    print("\n[Updating daily_feed.xml - Fresh articles only]")
     to_zone = timezone(timedelta(hours=BD_OFFSET))
 
     last_data = load_last_seen()
     last_seen_dt = last_data["last_seen"]
-    processed_links = set(last_data["processed_links"])
 
+    # If first run, use lookback window
     if last_seen_dt:
-        lookback_dt = last_seen_dt - timedelta(hours=LOOKBACK_HOURS)
+        # Only get articles published AFTER last run
+        cutoff_dt = last_seen_dt
     else:
-        lookback_dt = None
+        # First run: get articles from last 24 hours
+        cutoff_dt = datetime.now(timezone.utc) - timedelta(hours=24)
 
     master_items = load_existing(XML_FILE)
     new_items = []
+    seen_links = set()  # Deduplicate within this batch
 
     for item in master_items:
         link = item["link"]
-        pub = item["pubDate"].astimezone(to_zone)
+        pub = item["pubDate"]
 
-        if link in processed_links:
+        # Skip duplicates within this batch
+        if link in seen_links:
             continue
 
-        if not lookback_dt or pub > lookback_dt:
+        # Only include articles published after cutoff
+        if pub > cutoff_dt:
             new_items.append(item)
-            processed_links.add(link)
+            seen_links.add(link)
 
     if not new_items:
         placeholder = [{
-            "title": "No new articles today",
+            "title": "No new articles since last update",
             "link": "https://www.newagebd.net",
-            "description": "Daily feed will populate after first articles appear.",
+            "description": "Daily feed will populate when new articles are published.",
             "pubDate": datetime.now(timezone.utc),
             "img": ""
         }]
 
-        write_rss(placeholder, DAILY_FILE, title="Daily Feed - New Age BD")
-        write_rss([], DAILY_FILE_2, title="Daily Feed Extra - New Age BD")
-
-        last_dt = placeholder[0]["pubDate"]
-        save_last_seen(last_dt, processed_links, master_items)
+        # Create empty daily_feed.xml
+        write_rss(placeholder, f"{DAILY_FILE_PREFIX}.xml", title="Daily Feed - New Age BD")
+        
+        # Update last_seen to current time
+        save_last_seen(datetime.now(timezone.utc))
         print("✓ No new articles for daily feed")
-        return
+        print(f"✓ {DAILY_FILE_PREFIX}.xml saved (placeholder)")
+        return [f"{DAILY_FILE_PREFIX}.xml"]
 
     new_items.sort(key=lambda x: x["pubDate"], reverse=True)
 
-    first_batch = new_items[:100]
-    second_batch = new_items[100:]
+    # Split into batches of MAX_ITEMS_PER_DAILY
+    batches = []
+    for i in range(0, len(new_items), MAX_ITEMS_PER_DAILY):
+        batches.append(new_items[i:i + MAX_ITEMS_PER_DAILY])
 
-    write_rss(first_batch, DAILY_FILE, title="Daily Feed - New Age BD")
-    print(f"✓ {DAILY_FILE} created with {len(first_batch)} articles")
+    # Create files for each batch
+    created_files = []
+    for idx, batch in enumerate(batches):
+        if idx == 0:
+            filename = f"{DAILY_FILE_PREFIX}.xml"
+            title = "Daily Feed - New Age BD"
+        else:
+            filename = f"{DAILY_FILE_PREFIX}_{idx + 1}.xml"
+            title = f"Daily Feed {idx + 1} - New Age BD"
+        
+        write_rss(batch, filename, title=title)
+        created_files.append(filename)
+        print(f"✓ {filename} saved with {len(batch)} articles")
+        print(f"✓ File path: {os.path.abspath(filename)}")
 
-    if second_batch:
-        write_rss(second_batch, DAILY_FILE_2, title="Daily Feed Extra - New Age BD")
-        print(f"✓ {DAILY_FILE_2} created with {len(second_batch)} articles")
-    else:
-        write_rss([], DAILY_FILE_2, title="Daily Feed Extra - New Age BD")
-        print(f"✓ {DAILY_FILE_2} created (empty)")
-
+    # Save the latest publication date as last_seen
     last_dt = max([i["pubDate"] for i in new_items])
-    save_last_seen(last_dt, processed_links, master_items)
-    print(f"✓ Processed {len(new_items)} new articles for daily feed")
+    save_last_seen(last_dt)
+    print(f"✓ {LAST_SEEN_FILE} saved successfully")
+    print(f"✓ File path: {os.path.abspath(LAST_SEEN_FILE)}")
+    print(f"✓ Processed {len(new_items)} new articles across {len(batches)} file(s)")
+    print(f"✓ Last seen date: {last_dt.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    
+    return created_files
 
 # -----------------------------
 # MAIN
@@ -364,13 +376,31 @@ def update_daily():
 if __name__ == "__main__":
     args = sys.argv[1:]
     
+    print("=" * 60)
+    print("New Age BD Article Scraper")
+    print("=" * 60)
+    
+    files_created = []
+    
     if "--daily-only" in args:
-        update_daily()
+        daily_files = update_daily()
+        files_created = daily_files + [LAST_SEEN_FILE]
     elif "--main-only" in args:
         update_main_xml()
+        files_created = [XML_FILE]
     else:
         # Default: update both
         update_main_xml()
-        update_daily()
+        daily_files = update_daily()
+        files_created = [XML_FILE] + daily_files + [LAST_SEEN_FILE]
+    
+    print("\n" + "=" * 60)
+    print("FILES CREATED/UPDATED:")
+    print("=" * 60)
+    for f in files_created:
+        exists = "✓ EXISTS" if os.path.exists(f) else "✗ NOT FOUND"
+        size = os.path.getsize(f) if os.path.exists(f) else 0
+        print(f"{exists} | {f} ({size} bytes)")
     
     print("\n✓ All operations completed!")
+    print("=" * 60)
