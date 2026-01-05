@@ -5,6 +5,13 @@
     <link>https://www.tbsnews.net</link>
     <description>Latest news articles from The Business Standard Bangladesh</description>
     <item>
+      <title>Cuba confirms deaths of 32 officers in Venezuela</title>
+      <link>https://www.tbsnews.net/world/cuba-confirms-deaths-32-officers-venezuela-1326606</link>
+      <description />
+      <pubDate>Mon, 05 Jan 2026 05:10:58 +0000</pubDate>
+      <enclosure url="https://www.tbsnews.net/sites/default/files/styles/big_2/public/images/2026/01/04/use_attack_venezuela.jpg" type="image/jpeg" />
+    </item>
+    <item>
       <title>Trump insists 'we need Greenland'</title>
       <link>https://www.tbsnews.net/world/trump-insists-we-need-greenland-1326601</link>
       <description />
@@ -6995,13 +7002,6 @@
       <description />
       <pubDate>Sun, 28 Dec 2025 05:34:20 +0000</pubDate>
       <enclosure url="https://www.tbsnews.net/sites/default/files/styles/big_2/public/images/2024/12/15/beximco-logo-tbs.jpg" type="image/jpeg" />
-    </item>
-    <item>
-      <title>Magnitude 5.8 earthquake strikes near coast of northern Peru: GFZ</title>
-      <link>https://www.tbsnews.net/world/magnitude-58-earthquake-strikes-near-coast-northern-peru-gfz-1320331</link>
-      <description />
-      <pubDate>Sun, 28 Dec 2025 05:34:20 +0000</pubDate>
-      <enclosure url="https://www.tbsnews.net/sites/default/files/styles/big_2/public/images/2023/11/17/earthquake.jpg" type="image/jpeg" />
     </item>
   </channel>
 </rss>
