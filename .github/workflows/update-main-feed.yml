@@ -2,7 +2,7 @@
 name: Update Main Feed (Every 5 mins)
 on:
   schedule:
-    - cron: "*/5 * * * *"   # Every 5 minutes
+    - cron: "*/30 * * * *"   # Every 5 minutes
   workflow_dispatch:
 
 jobs:
