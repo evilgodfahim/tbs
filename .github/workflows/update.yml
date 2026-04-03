@@ -1,0 +1,47 @@
+name: TBS RSS Scraper
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Start FlareSolverr
+        run: |
+          docker run -d \
+            --name flaresolverr \
+            -p 8191:8191 \
+            ghcr.io/flaresolverr/flaresolverr:latest
+
+      - name: Wait for FlareSolverr
+        run: |
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:8191/health && break
+            sleep 2
+          done
+
+      - name: Run scraper
+        run: python scraper.py
+
+      - name: Commit and push XML files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add *.xml *.json
+          git diff --cached --quiet || git commit -m "chore: update RSS feeds [$(date -u '+%Y-%m-%d %H:%M UTC')]"
+          git push
