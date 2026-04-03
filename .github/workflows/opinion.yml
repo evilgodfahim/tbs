@@ -2,7 +2,7 @@ name: Fetch Samakal Opinion
 
 on:
   schedule:
-    - cron: "*/5 * * * *"   # 23:00 UTC = 5:00 AM BD time
+    - crogfn: "*/5 * * * *"   # 23:00 UTC = 5:00 AM BD time
   workflow_dispatch:
 
 jobs:
