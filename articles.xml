@@ -5,6 +5,13 @@
     <link>https://www.tbsnews.net</link>
     <description>Latest news articles from The Business Standard Bangladesh</description>
     <item>
+      <title>Fuel prices hiked; octane hits Tk140, diesel Tk115 per litre</title>
+      <link>https://www.tbsnews.net/bangladesh/energy/fuel-prices-raised-line-global-market-diesel-tk115-litre-sunday-1414946</link>
+      <description />
+      <pubDate>Sat, 18 Apr 2026 16:48:19 +0000</pubDate>
+      <enclosure url="https://www.tbsnews.net/sites/default/files/styles/big_2/public/images/2026/03/09/fuel.png" type="image/jpeg" />
+    </item>
+    <item>
       <title>3.1m seats, 12,000 flights: Saudi unveils massive Hajj transport plan for pilgrims</title>
       <link>https://www.tbsnews.net/worldbiz/middle-east/31m-seats-12000-flights-saudi-unveils-massive-hajj-transport-plan-pilgrims</link>
       <description />
@@ -3496,13 +3503,6 @@
       <description />
       <pubDate>Wed, 15 Apr 2026 07:23:29 +0000</pubDate>
       <enclosure url="https://www.tbsnews.net/sites/default/files/styles/big_2/public/images/2025/11/06/kazianis.png" type="image/jpeg" />
-    </item>
-    <item>
-      <title>Iran war triggers sharp drop in Middle East crude oil exports</title>
-      <link>https://www.tbsnews.net/infograph/numbers/iran-war-triggers-sharp-drop-middle-east-crude-oil-exports-1411801</link>
-      <description />
-      <pubDate>Wed, 15 Apr 2026 07:23:29 +0000</pubDate>
-      <enclosure url="https://www.tbsnews.net/sites/default/files/styles/big_2/public/images/2026/04/15/iran-war-triggers-sharp-drop-in-middle-east-crude-oil-exports.png" type="image/jpeg" />
     </item>
   </channel>
 </rss>
