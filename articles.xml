@@ -5,6 +5,13 @@
     <link>https://www.tbsnews.net</link>
     <description>Latest news articles from The Business Standard Bangladesh</description>
     <item>
+      <title>US announces ceasefire extension with Iran</title>
+      <link>https://www.tbsnews.net/world/us-announces-ceasefire-extension-iran-1418021</link>
+      <description />
+      <pubDate>Wed, 22 Apr 2026 01:29:17 +0000</pubDate>
+      <enclosure url="https://www.tbsnews.net/sites/default/files/styles/big_2/public/images/2026/04/22/screenshot_2026-04-22_072354.png" type="image/jpeg" />
+    </item>
+    <item>
       <title>Between the canvas and the crest: The shifting economics of Dhaka’s framing houses</title>
       <link>https://www.tbsnews.net/features/panorama/between-canvas-and-crest-shifting-economics-dhakas-framing-houses-1418016</link>
       <description />
@@ -3496,13 +3503,6 @@
       <description />
       <pubDate>Sat, 18 Apr 2026 17:40:26 +0000</pubDate>
       <enclosure url="https://www.tbsnews.net/sites/default/files/styles/big_2/public/images/2026/04/18/sanem_conference.jpeg" type="image/jpeg" />
-    </item>
-    <item>
-      <title>Bodies of 34 Bangladeshi migrants arrive from Kuwait, Malaysia, Libya</title>
-      <link>https://www.tbsnews.net/bangladesh/bodies-34-bangladeshi-migrants-arrive-kuwait-malaysia-libya-1414931</link>
-      <description />
-      <pubDate>Sat, 18 Apr 2026 16:36:26 +0000</pubDate>
-      <enclosure url="https://www.tbsnews.net/sites/default/files/styles/big_2/public/images/2026/04/19/body.jpg" type="image/jpeg" />
     </item>
   </channel>
 </rss>
